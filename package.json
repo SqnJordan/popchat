@@ -1,8 +1,7 @@
-
 {
   "name": "popchat",
   "version": "1.0.0",
-  "description": "PopChat chat mundial",
+  "description": "Chat y videollamada por gustos",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
