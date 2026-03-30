@@ -1,55 +1,68 @@
-
-body{
-margin:0;
-font-family:Arial;
-background:linear-gradient(135deg,#002e22,#00110c);
-color:white;
+body {
+  margin:0; padding:0;
+  font-family: Arial, sans-serif;
+  background: #e0f7e9;
+  color:#043927;
 }
 
-.container{
-text-align:center;
-margin-top:120px;
+.video-container {
+  display:flex;
+  flex-direction: row;
+  height: 100vh;
 }
 
-button{
-padding:12px;
-margin:10px;
-background:#00ffb3;
-border:none;
-border-radius:10px;
-font-weight:bold;
-cursor:pointer;
+.video-left, .video-right {
+  flex:1;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:#a2d5ab;
 }
 
-.chatBox{
-width:400px;
-margin:50px auto;
+video {
+  width:90%;
+  max-height:80%;
+  border-radius:10px;
+  box-shadow:0 0 15px rgba(0,0,0,0.4);
 }
 
-#mensajes{
-height:300px;
-background:#01261d;
-padding:10px;
-overflow-y:auto;
-border-radius:10px;
+.hud {
+  position:absolute;
+  bottom:0;
+  width:100%;
+  background:rgba(4,57,39,0.85);
+  color:white;
+  padding:10px;
+  display:flex;
+  flex-direction: column;
+  gap:10px;
 }
 
-input{
-width:100%;
-padding:10px;
-margin-top:10px;
-background:#003d2e;
-border:none;
-color:white;
+#chatBox {
+  height:120px;
+  overflow-y:auto;
+  background:rgba(255,255,255,0.1);
+  padding:5px;
+  border-radius:5px;
 }
 
-.videoBox{
-text-align:center;
-margin-top:40px;
-}
+#chatBox p {margin:3px;}
+.self {color:#b8ffb0;}
+.other {color:#ffffff;}
 
-video{
-width:300px;
-border-radius:12px;
-margin:10px;
+.controls input {
+  width:70%;
+  padding:5px;
+  border-radius:5px;
+  border:none;
+  margin-right:5px;
 }
+.controls button {
+  padding:5px 10px;
+  border:none;
+  border-radius:5px;
+  background:#43a047;
+  color:white;
+  cursor:pointer;
+}
+.controls button:hover {background:#388e3c;}
