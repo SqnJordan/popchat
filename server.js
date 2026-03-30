@@ -1,66 +1,75 @@
+const http = require('http');
 const express = require('express');
+const WebSocket = require('ws');
+const path = require('path');
+
 const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
-const PORT = process.env.PORT || 3000;
+let usuarios = [];
 
-http.listen(PORT, () => {
-  console.log(`Servidor corriendo en puerto ${PORT}`);
-});
+wss.on('connection', ws => {
+  let usuarioActual = null;
 
-// Usuarios esperando
-let waitingUsers = [];
+  ws.on('message', msg => {
+    const data = JSON.parse(msg);
+    
+    if(data.type==="join"){
+      usuarioActual = {...data.data, ws: ws};
+      usuarios.push(usuarioActual);
+      emparejarUsuarios();
+    }
 
-io.on('connection', socket => {
-  console.log('Usuario conectado:', socket.id);
+    if(data.type==="message" && usuarioActual){
+      // Enviar solo al otro emparejado
+      if(usuarioActual.pareja) usuarioActual.pareja.ws.send(JSON.stringify({type:"message", data:{texto:data.data.texto, usuario:usuarioActual.nombre}}));
+    }
 
-  socket.on('joinQueue', data => {
-    socket.userData = data;
-    // Buscamos alguien compatible
-    let match = waitingUsers.find(u => {
-      if(u.language !== data.language) return false; // idioma
-      let score = 0;
-      if(u.pelicula === data.pelicula && data.pelicula !== "No tengo") score++;
-      if(u.deporte === data.deporte && data.deporte !== "Ninguno") score++;
-      if(u.clima === data.clima && data.clima !== "Ninguno") score++;
-      return score > 0;
-    });
+    if(data.type==="skip" && usuarioActual){
+      if(usuarioActual.pareja){
+        usuarioActual.pareja.ws.send(JSON.stringify({type:"skip"}));
+        usuarioActual.pareja.pareja = null;
+      }
+      usuarioActual.pareja = null;
+      emparejarUsuarios();
+    }
 
-    if(match){
-      // Creamos sala
-      const room = `room-${socket.id}-${match.id}`;
-      socket.join(room);
-      io.to(match.id).socketsJoin(room);
-
-      // Avisamos a ambos
-      io.to(room).emit('matched', {room: room, users: [socket.userData, match.data]});
-
-      // Quitamos de la cola
-      waitingUsers = waitingUsers.filter(u => u.id !== match.id);
-    } else {
-      waitingUsers.push({id: socket.id, data, language: data.language});
+    if(data.type==="signal" && usuarioActual && usuarioActual.pareja){
+      usuarioActual.pareja.ws.send(JSON.stringify({type:"signal", data:data.data}));
     }
   });
 
-  socket.on('sendMessage', msg => {
-    const rooms = Array.from(socket.rooms).filter(r => r !== socket.id);
-    rooms.forEach(room => io.to(room).emit('receiveMessage', msg));
-  });
-
-  socket.on('skip', () => {
-    // Salir de todas las salas
-    const rooms = Array.from(socket.rooms).filter(r => r !== socket.id);
-    rooms.forEach(room => socket.leave(room));
-    socket.emit('skipped');
-    // Volver a la cola
-    waitingUsers.push({id: socket.id, data: socket.userData, language: socket.userData.language});
-  });
-
-  socket.on('disconnect', () => {
-    waitingUsers = waitingUsers.filter(u => u.id !== socket.id);
-    console.log('Usuario desconectado:', socket.id);
+  ws.on('close', () => {
+    usuarios = usuarios.filter(u => u!==usuarioActual);
+    if(usuarioActual && usuarioActual.pareja) usuarioActual.pareja.pareja = null;
   });
 });
+
+// Función simple de emparejamiento por idioma y gustos
+function emparejarUsuarios(){
+  for(let i=0;i<usuarios.length;i++){
+    let u = usuarios[i];
+    if(u.pareja) continue;
+
+    for(let j=i+1;j<usuarios.length;j++){
+      let v = usuarios[j];
+      if(v.pareja) continue;
+
+      // Emparejar si idioma igual, sino aceptar cualquiera
+      if(u.genero && v.genero){
+        u.pareja = v;
+        v.pareja = u;
+
+        u.ws.send(JSON.stringify({type:"message", data:{texto:"¡Conectado con alguien!", usuario:"Sistema"}}));
+        v.ws.send(JSON.stringify({type:"message", data:{texto:"¡Conectado con alguien!", usuario:"Sistema"}}));
+        break;
+      }
+    }
+  }
+}
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, ()=>console.log(`Servidor corriendo en puerto ${PORT}`));
