@@ -2,115 +2,148 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>PopChat - Video</title>
+<title>PopChat - VideoChat</title>
 <link rel="stylesheet" href="style.css">
-<script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
+
 <div class="video-container">
 
-<div class="video-left">
-  <video id="localVideo" autoplay muted></video>
-</div>
-
-<div class="video-right">
-  <video id="remoteVideo" autoplay></video>
-</div>
-
-<div class="hud">
-  <div class="info">
-    <p id="nombreInfo">Usuario: ...</p>
-    <p id="gustoInfo">Gustos similares: ...</p>
+  <div class="video-left">
+    <video id="localVideo" autoplay muted></video>
   </div>
-  <div class="controls">
-    <input id="mensajeInput" placeholder="Escribe tu mensaje">
-    <button onclick="enviar()">Enviar</button>
-    <button onclick="skip()">Skip</button>
+
+  <div class="video-right">
+    <video id="remoteVideo" autoplay></video>
+
+    <div class="hud">
+      <div class="info">
+        <p id="infoNombre"></p>
+        <p id="infoEdadGenero"></p>
+        <p id="infoGustos"></p>
+      </div>
+
+      <div id="mensajes" style="max-height:150px; overflow-y:auto;"></div>
+
+      <div class="controls">
+        <input type="text" id="mensajeInput" placeholder="Escribe tu mensaje...">
+        <button onclick="enviarMensaje()">Enviar</button>
+        <button onclick="skipPersona()">Skip</button>
+      </div>
+    </div>
   </div>
-  <div id="chatBox"></div>
-</div>
 
 </div>
 
 <script>
-const socket = io();
+document.getElementById("infoNombre").innerText = localStorage.getItem("nombre") || "";
+document.getElementById("infoEdadGenero").innerText = `${localStorage.getItem("edad") || ""} años, ${localStorage.getItem("genero") || ""}`;
+document.getElementById("infoGustos").innerText = `Película: ${localStorage.getItem("pelicula") || ""}, Deporte: ${localStorage.getItem("deporte") || ""}, Club: ${localStorage.getItem("club") || ""}`;
+
+const mensajes = document.getElementById("mensajes");
+let ws;
 let localStream;
 let pc;
-const configuration = {iceServers: [{urls:"stun:stun.l.google.com:19302"}]};
+let remoteVideo = document.getElementById("remoteVideo");
 
-async function startVideo(){
-  localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
-  document.getElementById("localVideo").srcObject = localStream;
+// WebSocket para chat y señalización WebRTC
+function iniciarVideoChat(){
+  ws = new WebSocket("wss://" + window.location.host);
+
+  ws.onopen = ()=> {
+    ws.send(JSON.stringify({type:"join", data:getUsuario()}));
+    iniciarCamara();
+  };
+
+  ws.onmessage = async (msg)=>{
+    const m = JSON.parse(msg.data);
+
+    if(m.type==="signal"){
+      if(m.data.desc) {
+        await pc.setRemoteDescription(new RTCSessionDescription(m.data.desc));
+        if(m.data.desc.type==="offer"){
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          ws.send(JSON.stringify({type:"signal", data:{desc:answer}}));
+        }
+      }
+      if(m.data.cand) await pc.addIceCandidate(new RTCIceCandidate(m.data.cand));
+    }
+
+    if(m.type==="message"){
+      mostrarMensaje(m.data.texto, m.data.usuario===getUsuario().nombre?"self":"other");
+    }
+
+    if(m.type==="skip"){
+      mensajes.innerHTML = "";
+      alert("Has pasado a la siguiente persona");
+    }
+  };
 }
 
-startVideo();
-
-socket.on("matched", info => {
-  document.getElementById("nombreInfo").innerText = `Usuario: ${info.users[1].nombre}`;
-  document.getElementById("gustoInfo").innerText = `Gustos similares: ${info.users[1].pelicula}, ${info.users[1].deporte}, ${info.users[1].clima}`;
-  iniciarLlamada();
-});
-
-function enviar(){
-  const msg = document.getElementById("mensajeInput").value;
-  socket.emit("sendMessage", msg);
-  document.getElementById("mensajeInput").value="";
-  document.getElementById("chatBox").innerHTML += `<p class="self">${msg}</p>`;
+// Info del usuario
+function getUsuario(){
+  return {
+    nombre: localStorage.getItem("nombre"),
+    edad: localStorage.getItem("edad"),
+    genero: localStorage.getItem("genero"),
+    pelicula: localStorage.getItem("pelicula"),
+    deporte: localStorage.getItem("deporte"),
+    club: localStorage.getItem("club"),
+    clima: localStorage.getItem("clima"),
+    color: localStorage.getItem("color"),
+    comida: localStorage.getItem("comida"),
+    sueno: localStorage.getItem("sueno")
+  };
 }
 
-socket.on("receiveMessage", msg => {
-  document.getElementById("chatBox").innerHTML += `<p class="other">${msg}</p>`;
-});
+// Chat
+function mostrarMensaje(texto, tipo){
+  const p = document.createElement("p");
+  p.className = tipo;
+  p.innerText = texto;
+  mensajes.appendChild(p);
+  mensajes.scrollTop = mensajes.scrollHeight;
+}
 
-function skip(){
-  socket.emit("skip");
-  document.getElementById("chatBox").innerHTML = "";
-  alert("Buscando otra persona...");
+function enviarMensaje(){
+  const input = document.getElementById("mensajeInput");
+  const texto = input.value.trim();
+  if(!texto) return;
+  mostrarMensaje(texto,"self");
+  ws.send(JSON.stringify({type:"message", data:{texto:texto, usuario:getUsuario().nombre}}));
+  input.value="";
+}
+
+function skipPersona(){
+  ws.send(JSON.stringify({type:"skip"}));
+  mensajes.innerHTML="";
 }
 
 // WebRTC
-async function iniciarLlamada(){
-  pc = new RTCPeerConnection(configuration);
+async function iniciarCamara(){
+  localStream = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
+  document.getElementById("localVideo").srcObject = localStream;
+
+  pc = new RTCPeerConnection();
+
+  // Enviar candidatos ICE
+  pc.onicecandidate = e => { if(e.candidate) ws.send(JSON.stringify({type:"signal", data:{cand:e.candidate}})) };
+
+  // Agregar stream remoto
+  pc.ontrack = e => { remoteVideo.srcObject = e.streams[0]; };
+
+  // Agregar pistas locales
   localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-  pc.ontrack = e => {
-    document.getElementById("remoteVideo").srcObject = e.streams[0];
-  };
-
-  pc.onicecandidate = e => {
-    if(e.candidate) socket.emit("iceCandidate", e.candidate);
-  };
-
+  // Crear oferta
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
-  socket.emit("videoOffer", offer);
+  ws.send(JSON.stringify({type:"signal", data:{desc:offer}}));
 }
 
-socket.on("videoOffer", async offer => {
-  pc = new RTCPeerConnection(configuration);
-  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-
-  pc.ontrack = e => {
-    document.getElementById("remoteVideo").srcObject = e.streams[0];
-  };
-
-  pc.onicecandidate = e => {
-    if(e.candidate) socket.emit("iceCandidate", e.candidate);
-  };
-
-  await pc.setRemoteDescription(offer);
-  const answer = await pc.createAnswer();
-  await pc.setLocalDescription(answer);
-  socket.emit("videoAnswer", answer);
-});
-
-socket.on("videoAnswer", async answer => {
-  await pc.setRemoteDescription(answer);
-});
-
-socket.on("iceCandidate", async candidate => {
-  try { await pc.addIceCandidate(candidate); } catch(e){}
-});
+window.onload = iniciarVideoChat;
 </script>
+
 </body>
 </html>
