@@ -4,73 +4,101 @@
 <meta charset="UTF-8">
 <title>PopChat - Chat</title>
 <link rel="stylesheet" href="style.css">
-<script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-<div class="container">
-<h2>Selecciona tus preferencias</h2>
 
-<input id="pelicula" placeholder="Película favorita (o escribir)">
-<input id="deporte" placeholder="Deporte favorito">
-<select id="clima">
-  <option value="">Clima</option>
-  <option>Frío</option>
-  <option>Calor</option>
-  <option>Lluvia</option>
-  <option>Nublado</option>
-  <option>Ninguno</option>
-</select>
-<input id="sueno" placeholder="Tu sueño">
+<div class="container" id="chatContainer">
+  <h1>Chat PopChat</h1>
+  <div class="hud">
+    <div class="info">
+      <p id="infoNombre"></p>
+      <p id="infoEdadGenero"></p>
+      <p id="infoGustos"></p>
+    </div>
+  </div>
 
-<button onclick="buscar()">Buscar persona</button>
-
-<div id="chatContainer" style="display:none;">
   <div id="mensajes"></div>
-  <input id="mensajeInput" placeholder="Escribe tu mensaje">
-  <button onclick="enviar()">Enviar</button>
-  <button onclick="skip()">Skip</button>
-</div>
 
+  <div class="controls">
+    <input type="text" id="mensajeInput" placeholder="Escribe tu mensaje...">
+    <button onclick="enviarMensaje()">Enviar</button>
+    <button onclick="skipPersona()">Skip</button>
+  </div>
 </div>
 
 <script>
-const socket = io();
+// Cargar info del usuario en HUD
+document.getElementById("infoNombre").innerText = localStorage.getItem("nombre") || "";
+document.getElementById("infoEdadGenero").innerText = `${localStorage.getItem("edad") || ""} años, ${localStorage.getItem("genero") || ""}`;
+document.getElementById("infoGustos").innerText = `Película: ${localStorage.getItem("pelicula") || ""}, Deporte: ${localStorage.getItem("deporte") || ""}, Club: ${localStorage.getItem("club") || ""}`;
 
-function buscar(){
-  const data = {
-    nombre: localStorage.getItem("nombre"),
-    genero: localStorage.getItem("genero"),
-    tipo: localStorage.getItem("tipo"),
-    pelicula: document.getElementById("pelicula").value || "No tengo",
-    deporte: document.getElementById("deporte").value || "Ninguno",
-    clima: document.getElementById("clima").value || "Ninguno",
-    sueno: document.getElementById("sueno").value || ""
+// Lista de mensajes
+const mensajes = document.getElementById("mensajes");
+
+// Conexión simulada (en server.js se reemplaza por conexión real)
+let ws;
+
+// Iniciar WebSocket para chat real
+function iniciarChat(){
+  // Se conecta al servidor
+  ws = new WebSocket("wss://" + window.location.host);
+
+  ws.onopen = ()=> {
+    ws.send(JSON.stringify({type:"join", data:getUsuario()}));
   };
-  socket.emit("joinQueue", data);
-  alert("Buscando persona...");
+
+  ws.onmessage = (msg)=>{
+    const m = JSON.parse(msg.data);
+    if(m.type==="message"){
+      mostrarMensaje(m.data.texto, m.data.usuario === getUsuario().nombre ? "self" : "other");
+    }
+    if(m.type==="skip"){
+      mensajes.innerHTML = "";
+      alert("Has pasado a la siguiente persona");
+    }
+  };
 }
 
-socket.on("matched", info => {
-  alert("¡Encontramos a alguien!");
-  document.getElementById("chatContainer").style.display="block";
-});
-
-function enviar(){
-  const msg = document.getElementById("mensajeInput").value;
-  socket.emit("sendMessage", msg);
-  document.getElementById("mensajeInput").value="";
+function getUsuario(){
+  return {
+    nombre: localStorage.getItem("nombre"),
+    edad: localStorage.getItem("edad"),
+    genero: localStorage.getItem("genero"),
+    pelicula: localStorage.getItem("pelicula"),
+    deporte: localStorage.getItem("deporte"),
+    club: localStorage.getItem("club"),
+    clima: localStorage.getItem("clima"),
+    color: localStorage.getItem("color"),
+    comida: localStorage.getItem("comida"),
+    sueno: localStorage.getItem("sueno")
+  };
 }
 
-socket.on("receiveMessage", msg => {
-  const div = document.getElementById("mensajes");
-  div.innerHTML += `<p>${msg}</p>`;
-});
-
-function skip(){
-  socket.emit("skip");
-  alert("Buscando otra persona...");
-  document.getElementById("chatContainer").style.display="none";
+function mostrarMensaje(texto, tipo){
+  const p = document.createElement("p");
+  p.className = tipo;
+  p.innerText = texto;
+  mensajes.appendChild(p);
+  mensajes.scrollTop = mensajes.scrollHeight;
 }
+
+function enviarMensaje(){
+  const input = document.getElementById("mensajeInput");
+  const texto = input.value.trim();
+  if(!texto) return;
+  mostrarMensaje(texto, "self");
+  ws.send(JSON.stringify({type:"message", data:{texto:texto, usuario:getUsuario().nombre}}));
+  input.value = "";
+}
+
+function skipPersona(){
+  ws.send(JSON.stringify({type:"skip"}));
+  mensajes.innerHTML = "";
+}
+
+// Iniciar chat al cargar
+window.onload = iniciarChat;
 </script>
+
 </body>
 </html>
