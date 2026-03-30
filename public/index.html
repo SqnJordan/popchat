@@ -6,67 +6,37 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
 <div class="container">
-
 <h1>PopChat</h1>
 <p>Encuentra personas con tus mismos gustos</p>
 
 <input type="text" id="nombre" placeholder="Tu nombre">
-
 <select id="genero">
-<option value="">Tu género</option>
-<option>Hombre</option>
-<option>Mujer</option>
-<option>Prefiero no decirlo</option>
+  <option value="">Género</option>
+  <option>Hombre</option>
+  <option>Mujer</option>
+  <option>Prefiero no decirlo</option>
+</select>
+<select id="tipoChat">
+  <option value="">Elegir</option>
+  <option value="chat">Solo chat</option>
+  <option value="video">Chat + cámara</option>
 </select>
 
-<select id="pelicula">
-<option value="">Película favorita</option>
-<option>Avengers</option>
-<option>Spider-Man</option>
-<option>Harry Potter</option>
-<option>Rápidos y Furiosos</option>
-<option>Batman</option>
-<option>No tengo</option>
-</select>
-
-<select id="deporte">
-<option value="">Deporte favorito</option>
-<option>Fútbol</option>
-<option>Basket</option>
-<option>Tennis</option>
-<option>Gym</option>
-<option>No tengo</option>
-</select>
-
-<select id="clima">
-<option value="">Clima favorito</option>
-<option>Frío</option>
-<option>Calor</option>
-<option>Lluvia</option>
-<option>Nublado</option>
-<option>Ninguno</option>
-</select>
-
-<textarea id="sueno" placeholder="¿Cuál es tu sueño?"></textarea>
-
-<button onclick="chat()">Solo chat</button>
-<button onclick="video()">Chat + cámara</button>
-
+<button onclick="proseguir()">Continuar</button>
 </div>
 
 <script>
-function chat(){
-localStorage.setItem("tipo","chat");
-window.location="chat.html";
-}
-
-function video(){
-localStorage.setItem("tipo","video");
-window.location="video.html";
+function proseguir(){
+  const nombre = document.getElementById("nombre").value;
+  const genero = document.getElementById("genero").value;
+  const tipo = document.getElementById("tipoChat").value;
+  if(!nombre || !genero || !tipo){ alert("Completa todo"); return; }
+  localStorage.setItem("nombre", nombre);
+  localStorage.setItem("genero", genero);
+  localStorage.setItem("tipo", tipo);
+  window.location="chat.html";
 }
 </script>
-
 </body>
 </html>
