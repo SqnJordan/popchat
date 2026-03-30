@@ -1,24 +1,116 @@
-
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>VideoChat</title>
+<title>PopChat - Video</title>
 <link rel="stylesheet" href="style.css">
+<script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
+<div class="video-container">
 
-<div class="videoBox">
+<div class="video-left">
+  <video id="localVideo" autoplay muted></video>
+</div>
 
-<video id="miVideo" autoplay muted></video>
-<video id="otroVideo" autoplay></video>
+<div class="video-right">
+  <video id="remoteVideo" autoplay></video>
+</div>
 
-<button onclick="siguiente()">Siguiente persona</button>
+<div class="hud">
+  <div class="info">
+    <p id="nombreInfo">Usuario: ...</p>
+    <p id="gustoInfo">Gustos similares: ...</p>
+  </div>
+  <div class="controls">
+    <input id="mensajeInput" placeholder="Escribe tu mensaje">
+    <button onclick="enviar()">Enviar</button>
+    <button onclick="skip()">Skip</button>
+  </div>
+  <div id="chatBox"></div>
+</div>
 
 </div>
 
-<script src="/socket.io/socket.io.js"></script>
-<script src="script.js"></script>
+<script>
+const socket = io();
+let localStream;
+let pc;
+const configuration = {iceServers: [{urls:"stun:stun.l.google.com:19302"}]};
 
+async function startVideo(){
+  localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+  document.getElementById("localVideo").srcObject = localStream;
+}
+
+startVideo();
+
+socket.on("matched", info => {
+  document.getElementById("nombreInfo").innerText = `Usuario: ${info.users[1].nombre}`;
+  document.getElementById("gustoInfo").innerText = `Gustos similares: ${info.users[1].pelicula}, ${info.users[1].deporte}, ${info.users[1].clima}`;
+  iniciarLlamada();
+});
+
+function enviar(){
+  const msg = document.getElementById("mensajeInput").value;
+  socket.emit("sendMessage", msg);
+  document.getElementById("mensajeInput").value="";
+  document.getElementById("chatBox").innerHTML += `<p class="self">${msg}</p>`;
+}
+
+socket.on("receiveMessage", msg => {
+  document.getElementById("chatBox").innerHTML += `<p class="other">${msg}</p>`;
+});
+
+function skip(){
+  socket.emit("skip");
+  document.getElementById("chatBox").innerHTML = "";
+  alert("Buscando otra persona...");
+}
+
+// WebRTC
+async function iniciarLlamada(){
+  pc = new RTCPeerConnection(configuration);
+  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+  pc.ontrack = e => {
+    document.getElementById("remoteVideo").srcObject = e.streams[0];
+  };
+
+  pc.onicecandidate = e => {
+    if(e.candidate) socket.emit("iceCandidate", e.candidate);
+  };
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  socket.emit("videoOffer", offer);
+}
+
+socket.on("videoOffer", async offer => {
+  pc = new RTCPeerConnection(configuration);
+  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+  pc.ontrack = e => {
+    document.getElementById("remoteVideo").srcObject = e.streams[0];
+  };
+
+  pc.onicecandidate = e => {
+    if(e.candidate) socket.emit("iceCandidate", e.candidate);
+  };
+
+  await pc.setRemoteDescription(offer);
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  socket.emit("videoAnswer", answer);
+});
+
+socket.on("videoAnswer", async answer => {
+  await pc.setRemoteDescription(answer);
+});
+
+socket.on("iceCandidate", async candidate => {
+  try { await pc.addIceCandidate(candidate); } catch(e){}
+});
+</script>
 </body>
 </html>
