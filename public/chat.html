@@ -1,27 +1,76 @@
-
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Chat</title>
+<title>PopChat - Chat</title>
 <link rel="stylesheet" href="style.css">
+<script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
+<div class="container">
+<h2>Selecciona tus preferencias</h2>
 
-<div class="chatBox">
+<input id="pelicula" placeholder="Película favorita (o escribir)">
+<input id="deporte" placeholder="Deporte favorito">
+<select id="clima">
+  <option value="">Clima</option>
+  <option>Frío</option>
+  <option>Calor</option>
+  <option>Lluvia</option>
+  <option>Nublado</option>
+  <option>Ninguno</option>
+</select>
+<input id="sueno" placeholder="Tu sueño">
 
-<div id="estado">Buscando persona...</div>
+<button onclick="buscar()">Buscar persona</button>
 
-<div id="mensajes"></div>
-
-<input id="msg" placeholder="Escribe un mensaje...">
-<button onclick="enviar()">Enviar</button>
-<button onclick="siguiente()">Siguiente persona</button>
+<div id="chatContainer" style="display:none;">
+  <div id="mensajes"></div>
+  <input id="mensajeInput" placeholder="Escribe tu mensaje">
+  <button onclick="enviar()">Enviar</button>
+  <button onclick="skip()">Skip</button>
+</div>
 
 </div>
 
-<script src="/socket.io/socket.io.js"></script>
-<script src="script.js"></script>
+<script>
+const socket = io();
 
+function buscar(){
+  const data = {
+    nombre: localStorage.getItem("nombre"),
+    genero: localStorage.getItem("genero"),
+    tipo: localStorage.getItem("tipo"),
+    pelicula: document.getElementById("pelicula").value || "No tengo",
+    deporte: document.getElementById("deporte").value || "Ninguno",
+    clima: document.getElementById("clima").value || "Ninguno",
+    sueno: document.getElementById("sueno").value || ""
+  };
+  socket.emit("joinQueue", data);
+  alert("Buscando persona...");
+}
+
+socket.on("matched", info => {
+  alert("¡Encontramos a alguien!");
+  document.getElementById("chatContainer").style.display="block";
+});
+
+function enviar(){
+  const msg = document.getElementById("mensajeInput").value;
+  socket.emit("sendMessage", msg);
+  document.getElementById("mensajeInput").value="";
+}
+
+socket.on("receiveMessage", msg => {
+  const div = document.getElementById("mensajes");
+  div.innerHTML += `<p>${msg}</p>`;
+});
+
+function skip(){
+  socket.emit("skip");
+  alert("Buscando otra persona...");
+  document.getElementById("chatContainer").style.display="none";
+}
+</script>
 </body>
 </html>
