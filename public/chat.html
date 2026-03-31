@@ -4,100 +4,84 @@
 <meta charset="UTF-8">
 <title>PopChat - Chat</title>
 <link rel="stylesheet" href="style.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
 
-<div class="container" id="chatContainer">
-  <h1>Chat PopChat</h1>
+<div class="container">
+  <h1>PopChat - Chat</h1>
+
   <div class="hud">
-    <div class="info">
-      <p id="infoNombre"></p>
-      <p id="infoEdadGenero"></p>
-      <p id="infoGustos"></p>
-    </div>
+    <h3>Información de tu pareja:</h3>
+    <div id="infoPareja" class="info"></div>
   </div>
 
   <div id="mensajes"></div>
 
   <div class="controls">
-    <input type="text" id="mensajeInput" placeholder="Escribe tu mensaje...">
+    <input id="mensajeInput" type="text" placeholder="Escribe tu mensaje...">
     <button onclick="enviarMensaje()">Enviar</button>
-    <button onclick="skipPersona()">Skip</button>
+    <button onclick="skipPareja()">Skip</button>
   </div>
 </div>
 
 <script>
-// Cargar info del usuario en HUD
-document.getElementById("infoNombre").innerText = localStorage.getItem("nombre") || "";
-document.getElementById("infoEdadGenero").innerText = `${localStorage.getItem("edad") || ""} años, ${localStorage.getItem("genero") || ""}`;
-document.getElementById("infoGustos").innerText = `Película: ${localStorage.getItem("pelicula") || ""}, Deporte: ${localStorage.getItem("deporte") || ""}, Club: ${localStorage.getItem("club") || ""}`;
+const ws = new WebSocket("wss://TU_SERVIDOR_WEBSOCKET_AQUI"); // reemplaza con tu servidor
 
-// Lista de mensajes
-const mensajes = document.getElementById("mensajes");
-
-// Conexión simulada (en server.js se reemplaza por conexión real)
-let ws;
-
-// Iniciar WebSocket para chat real
-function iniciarChat(){
-  // Se conecta al servidor
-  ws = new WebSocket("wss://" + window.location.host);
-
-  ws.onopen = ()=> {
-    ws.send(JSON.stringify({type:"join", data:getUsuario()}));
-  };
-
-  ws.onmessage = (msg)=>{
-    const m = JSON.parse(msg.data);
-    if(m.type==="message"){
-      mostrarMensaje(m.data.texto, m.data.usuario === getUsuario().nombre ? "self" : "other");
-    }
-    if(m.type==="skip"){
-      mensajes.innerHTML = "";
-      alert("Has pasado a la siguiente persona");
-    }
-  };
-}
-
-function getUsuario(){
-  return {
-    nombre: localStorage.getItem("nombre"),
-    edad: localStorage.getItem("edad"),
-    genero: localStorage.getItem("genero"),
-    pelicula: localStorage.getItem("pelicula"),
-    deporte: localStorage.getItem("deporte"),
-    club: localStorage.getItem("club"),
-    clima: localStorage.getItem("clima"),
-    color: localStorage.getItem("color"),
-    comida: localStorage.getItem("comida"),
-    sueno: localStorage.getItem("sueno")
-  };
-}
-
-function mostrarMensaje(texto, tipo){
-  const p = document.createElement("p");
+function agregarMensaje(texto, tipo, usuario){
+  const mensajes = document.getElementById('mensajes');
+  const p = document.createElement('p');
+  const hora = new Date();
+  const horaStr = hora.getHours().toString().padStart(2,'0') + ':' + hora.getMinutes().toString().padStart(2,'0');
+  p.innerHTML = `<strong>${usuario}</strong> [${horaStr}]: ${texto}`;
   p.className = tipo;
-  p.innerText = texto;
   mensajes.appendChild(p);
   mensajes.scrollTop = mensajes.scrollHeight;
 }
 
 function enviarMensaje(){
-  const input = document.getElementById("mensajeInput");
+  const input = document.getElementById('mensajeInput');
   const texto = input.value.trim();
   if(!texto) return;
-  mostrarMensaje(texto, "self");
-  ws.send(JSON.stringify({type:"message", data:{texto:texto, usuario:getUsuario().nombre}}));
+  agregarMensaje(texto,"self","Yo");
+  ws.send(JSON.stringify({type:"message", data:{texto: texto}}));
   input.value = "";
 }
 
-function skipPersona(){
+function skipPareja(){
   ws.send(JSON.stringify({type:"skip"}));
-  mensajes.innerHTML = "";
+  document.getElementById('infoPareja').innerHTML = "<p>Buscando otra persona...</p>";
 }
 
-// Iniciar chat al cargar
-window.onload = iniciarChat;
+// Recibir mensajes y datos de la pareja
+ws.onmessage = (msg)=>{
+  const data = JSON.parse(msg.data);
+
+  if(data.type === "infoPareja"){
+    const infoDiv = document.getElementById('infoPareja');
+    infoDiv.innerHTML = `
+      <p><strong>Nombre:</strong> ${data.data.nombre}</p>
+      <p><strong>Género:</strong> ${data.data.genero}</p>
+      <p><strong>Edad:</strong> ${data.data.edad}</p>
+      <p><strong>Color favorito:</strong> ${data.data.color}</p>
+      <p><strong>Comida favorita:</strong> ${data.data.comida}</p>
+      <p><strong>Club:</strong> ${data.data.club}</p>
+      <p><strong>Película favorita:</strong> ${data.data.pelicula}</p>
+      <p><strong>Deporte:</strong> ${data.data.deporte}</p>
+      <p><strong>Clima:</strong> ${data.data.clima}</p>
+      <p><strong>Hobby:</strong> ${data.data.hobby}</p>
+      <p><strong>Sueño:</strong> ${data.data.sueno}</p>
+    `;
+  }
+
+  if(data.type === "message"){
+    agregarMensaje(data.data.texto, "other", data.data.usuario);
+  }
+
+  if(data.type === "skip"){
+    document.getElementById('infoPareja').innerHTML = "<p>Te desconectaste de tu pareja. Buscando otra...</p>";
+  }
+};
 </script>
 
 </body>
