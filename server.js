@@ -20,6 +20,7 @@ wss.on('connection', ws => {
     if(data.type==="join"){
       usuarioActual = {...data.data, ws: ws};
       usuarios.push(usuarioActual);
+      console.log("Usuarios conectados:", usuarios.length);
       emparejarUsuarios();
     }
 
