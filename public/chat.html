@@ -28,7 +28,25 @@
 </div>
 
 <script>
-const ws = new WebSocket("wss://TU_SERVIDOR_WEBSOCKET_AQUI"); // reemplaza con tu servidor
+const ws = new WebSocket("wss://popchat-tw3u.onrender.com");
+
+     ws.onopen = () => {
+  ws.send(JSON.stringify({
+    type: "join",
+    data: {
+      nombre: localStorage.getItem("nombre"),
+      edad: localStorage.getItem("edad"),
+      genero: localStorage.getItem("genero"),
+      pelicula: localStorage.getItem("pelicula"),
+      deporte: localStorage.getItem("deporte"),
+      clima: localStorage.getItem("clima"),
+      color: localStorage.getItem("color"),
+      comida: localStorage.getItem("comida"),
+      club: localStorage.getItem("club"),
+      sueno: localStorage.getItem("sueno")
+    }
+  }));
+};
 
 function agregarMensaje(texto, tipo, usuario){
   const mensajes = document.getElementById('mensajes');
