@@ -59,15 +59,56 @@ function emparejarUsuarios(){
       let v = usuarios[j];
       if(v.pareja) continue;
 
-      // Emparejar si idioma igual, sino aceptar cualquiera
       if(u.genero && v.genero){
-        u.pareja = v;
-        v.pareja = u;
+  u.pareja = v;
+  v.pareja = u;
 
-        u.ws.send(JSON.stringify({type:"message", data:{texto:"¡Conectado con alguien!", usuario:"Sistema"}}));
-        v.ws.send(JSON.stringify({type:"message", data:{texto:"¡Conectado con alguien!", usuario:"Sistema"}}));
-        break;
-      }
+  // Mensaje de conexión
+  u.ws.send(JSON.stringify({
+    type:"message",
+    data:{texto:"¡Conectado con alguien!", usuario:"Sistema"}
+  }));
+
+  v.ws.send(JSON.stringify({
+    type:"message",
+    data:{texto:"¡Conectado con alguien!", usuario:"Sistema"}
+  }));
+
+  // 👇 ENVIAR INFO DE LA PAREJA
+  u.ws.send(JSON.stringify({
+    type:"infoPareja",
+    data:{
+      nombre: v.nombre,
+      edad: v.edad,
+      genero: v.genero,
+      pelicula: v.pelicula,
+      deporte: v.deporte,
+      clima: v.clima,
+      color: v.color,
+      comida: v.comida,
+      club: v.club,
+      sueno: v.sueno
+    }
+  }));
+
+  v.ws.send(JSON.stringify({
+    type:"infoPareja",
+    data:{
+      nombre: u.nombre,
+      edad: u.edad,
+      genero: u.genero,
+      pelicula: u.pelicula,
+      deporte: u.deporte,
+      clima: u.clima,
+      color: u.color,
+      comida: u.comida,
+      club: u.club,
+      sueno: u.sueno
+    }
+  }));
+
+  break;
+}
     }
   }
 }
