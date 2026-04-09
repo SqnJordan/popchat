@@ -115,15 +115,37 @@ function conectarUsuarios(u, v){
     data:{texto:"¡Conectado con alguien!", usuario:"Sistema"}
   }));
 
-  u.ws.send(JSON.stringify({
-    type:"infoPareja",
-    data: v
-  }));
+u.ws.send(JSON.stringify({
+  type:"infoPareja",
+  data:{
+    nombre: v.nombre,
+    edad: v.edad,
+    genero: v.genero,
+    pelicula: v.pelicula,
+    deporte: v.deporte,
+    clima: v.clima,
+    color: v.color,
+    comida: v.comida,
+    club: v.club,
+    sueno: v.sueno
+  }
+}));
 
-  v.ws.send(JSON.stringify({
-    type:"infoPareja",
-    data: u
-  }));
+v.ws.send(JSON.stringify({
+  type:"infoPareja",
+  data:{
+    nombre: u.nombre,
+    edad: u.edad,
+    genero: u.genero,
+    pelicula: u.pelicula,
+    deporte: u.deporte,
+    clima: u.clima,
+    color: u.color,
+    comida: u.comida,
+    club: u.club,
+    sueno: u.sueno
+  }
+}));
 }
 
 const PORT = process.env.PORT || 3000;
