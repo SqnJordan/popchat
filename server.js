@@ -51,17 +51,83 @@ wss.on('connection', ws => {
 
 // Función simple de emparejamiento por idioma y gustos
 function emparejarUsuarios(){
+
   for(let i=0;i<usuarios.length;i++){
     let u = usuarios[i];
     if(u.pareja) continue;
+
+    let mejorMatch = null;
+    let mejorScore = -1;
 
     for(let j=i+1;j<usuarios.length;j++){
       let v = usuarios[j];
       if(v.pareja) continue;
 
-      if(u.genero && v.genero){
+      // 👇 mantener verificación básica
+      if(!u.genero || !v.genero) continue;
+
+      // 🎯 calcular coincidencias
+      let score = 0;
+
+      if(u.pelicula === v.pelicula) score++;
+      if(u.deporte === v.deporte) score++;
+      if(u.color === v.color) score++;
+      if(u.comida === v.comida) score++;
+      if(u.club === v.club) score++;
+      if(u.clima === v.clima) score++;
+
+      // 👇 guardar el mejor match
+      if(score > mejorScore){
+        mejorScore = score;
+        mejorMatch = v;
+      }
+    }
+
+    // ✅ PRIORIDAD: gustos similares
+    if(mejorMatch && mejorScore >= 2){
+      conectarUsuarios(u, mejorMatch);
+    }
+
+    // ⚠️ SI NO HAY MATCH → conectar con cualquiera
+    else{
+      for(let j=i+1;j<usuarios.length;j++){
+        let v = usuarios[j];
+        if(!v.pareja && v !== u){
+          conectarUsuarios(u, v);
+          break;
+        }
+      }
+    }
+  }
+}
+
+function conectarUsuarios(u, v){
   u.pareja = v;
   v.pareja = u;
+
+  // mensaje
+  u.ws.send(JSON.stringify({
+    type:"message",
+    data:{texto:"¡Conectado con alguien!", usuario:"Sistema"}
+  }));
+
+  v.ws.send(JSON.stringify({
+    type:"message",
+    data:{texto:"¡Conectado con alguien!", usuario:"Sistema"}
+  }));
+
+  // info pareja
+  u.ws.send(JSON.stringify({
+    type:"infoPareja",
+    data: v
+  }));
+
+  v.ws.send(JSON.stringify({
+    type:"infoPareja",
+    data: u
+  }));
+}
+
 
   // Mensaje de conexión
   u.ws.send(JSON.stringify({
