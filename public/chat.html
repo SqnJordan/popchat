@@ -22,12 +22,22 @@
 
   <div class="controls">
     <input id="mensajeInput" type="text" placeholder="Escribe tu mensaje...">
+
     <button onclick="enviarMensaje()">Enviar</button>
     <button onclick="skipPareja()">Skip</button>
   </div>
 </div>
 
 <script>
+     const input = document.getElementById("mensajeInput");
+
+input.addEventListener("keypress", function(e) {
+  if(e.key === "Enter"){
+    e.preventDefault(); // evita salto raro
+    enviarMensaje();
+  }
+});
+      
 const ws = new WebSocket("wss://popchat-tw3u.onrender.com");
 
      ws.onopen = () => {
