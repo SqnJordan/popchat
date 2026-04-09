@@ -30,73 +30,131 @@
 </div>
 
 <script>
-const ws = new WebSocket("wss://TU_SERVIDOR_WEBSOCKET_AQUI"); // reemplaza con tu servidor
+const ws = new WebSocket("wss://popchat-tw3u.onrender.com");
 
-function agregarMensaje(texto, tipo, usuario){
-  const mensajes = document.getElementById('mensajes');
-  const p = document.createElement('p');
-  const hora = new Date();
-  const horaStr = hora.getHours().toString().padStart(2,'0') + ':' + hora.getMinutes().toString().padStart(2,'0');
-  p.innerHTML = `<strong>${usuario}</strong> [${horaStr}]: ${texto}`;
-  p.className = tipo;
-  mensajes.appendChild(p);
-  mensajes.scrollTop = mensajes.scrollHeight;
-}
+let localStream;
+let peer;
 
-function enviarMensaje(){
-  const input = document.getElementById('mensajeInput');
-  const texto = input.value.trim();
-  if(!texto) return;
-  agregarMensaje(texto,"self","Yo");
-  ws.send(JSON.stringify({type:"message", data:{texto: texto}}));
-  input.value = "";
-}
+// 👇 ENVIAR JOIN
+ws.onopen = () => {
+  ws.send(JSON.stringify({
+    type: "join",
+    data: {
+      nombre: localStorage.getItem("nombre"),
+      edad: localStorage.getItem("edad"),
+      genero: localStorage.getItem("genero"),
+      pelicula: localStorage.getItem("pelicula"),
+      deporte: localStorage.getItem("deporte"),
+      clima: localStorage.getItem("clima"),
+      color: localStorage.getItem("color"),
+      comida: localStorage.getItem("comida"),
+      club: localStorage.getItem("club"),
+      sueno: localStorage.getItem("sueno")
+    }
+  }));
+};
 
-function skipPareja(){
-  ws.send(JSON.stringify({type:"skip"}));
-  document.getElementById('infoPareja').innerHTML = "<p>Buscando otra persona...</p>";
-}
-
-// Video local
+// 🎥 TU CAMARA
 const localVideo = document.getElementById('localVideo');
 navigator.mediaDevices.getUserMedia({video:true, audio:true})
-.then(stream => { localVideo.srcObject = stream; })
-.catch(err => { console.error("Error al acceder a la cámara:", err); });
+.then(stream => {
+  localStream = stream;
+  localVideo.srcObject = stream;
+});
 
-// Recibir mensajes y datos de la pareja
-ws.onmessage = (msg)=>{
+// ⚡ CREAR PEER
+function crearPeer(){
+  peer = new RTCPeerConnection();
+
+  // 👇 PROTECCIÓN
+  if(localStream){
+    localStream.getTracks().forEach(track => {
+      peer.addTrack(track, localStream);
+    });
+  }
+
+  peer.ontrack = e => {
+    document.getElementById("remoteVideo").srcObject = e.streams[0];
+  };
+
+  peer.onicecandidate = e => {
+    if(e.candidate){
+      ws.send(JSON.stringify({type:"signal", data:e.candidate}));
+    }
+  };
+}
+     
+
+// 📩 MENSAJES
+ws.onmessage = async (msg) => {
   const data = JSON.parse(msg.data);
 
   if(data.type === "infoPareja"){
     const infoDiv = document.getElementById('infoPareja');
     infoDiv.innerHTML = `
       <p><strong>Nombre:</strong> ${data.data.nombre}</p>
-      <p><strong>Género:</strong> ${data.data.genero}</p>
       <p><strong>Edad:</strong> ${data.data.edad}</p>
-      <p><strong>Color favorito:</strong> ${data.data.color}</p>
-      <p><strong>Comida favorita:</strong> ${data.data.comida}</p>
-      <p><strong>Club:</strong> ${data.data.club}</p>
-      <p><strong>Película favorita:</strong> ${data.data.pelicula}</p>
-      <p><strong>Deporte:</strong> ${data.data.deporte}</p>
-      <p><strong>Clima:</strong> ${data.data.clima}</p>
-      <p><strong>Hobby:</strong> ${data.data.hobby}</p>
-      <p><strong>Sueño:</strong> ${data.data.sueno}</p>
+      <p><strong>Género:</strong> ${data.data.genero}</p>
     `;
+
+    // 👇 iniciar conexión video
+    crearPeer();
+
+    const offer = await peer.createOffer();
+    await peer.setLocalDescription(offer);
+
+    ws.send(JSON.stringify({type:"signal", data:offer}));
+  }
+
+  if(data.type === "signal"){
+    if(!peer) crearPeer();
+
+    if(data.data.type === "offer"){
+  await peer.setRemoteDescription(new RTCSessionDescription(data.data));
+
+  const answer = await peer.createAnswer();
+  await peer.setLocalDescription(answer);
+
+  ws.send(JSON.stringify({type:"signal", data:answer}));
+}
+         
+
+    else if(data.data.type === "answer"){
+      await peer.setRemoteDescription(new RTCSessionDescription(data.data));
+    }
+
+    else{
+      await peer.addIceCandidate(new RTCIceCandidate(data.data));
+    }
   }
 
   if(data.type === "message"){
     agregarMensaje(data.data.texto, "other", data.data.usuario);
   }
-
-  if(data.type === "skip"){
-    document.getElementById('infoPareja').innerHTML = "<p>Te desconectaste de tu pareja. Buscando otra...</p>";
-  }
-
-  if(data.type === "videoStream"){
-    const remoteVideo = document.getElementById('remoteVideo');
-    remoteVideo.srcObject = data.stream; // depende de cómo lo envíes desde el servidor
-  }
 };
+
+// 💬 CHAT
+function agregarMensaje(texto, tipo, usuario){
+  const mensajes = document.getElementById('mensajes');
+  const p = document.createElement('p');
+  const hora = new Date().toLocaleTimeString();
+  p.innerHTML = `<strong>${usuario}</strong> [${hora}]: ${texto}`;
+  mensajes.appendChild(p);
+}
+
+function enviarMensaje(){
+  const input = document.getElementById('mensajeInput');
+  const texto = input.value.trim();
+  if(!texto) return;
+
+  agregarMensaje(texto,"self","Yo");
+  ws.send(JSON.stringify({type:"message", data:{texto}}));
+  input.value = "";
+}
+
+function skipPareja(){
+  ws.send(JSON.stringify({type:"skip"}));
+}
 </script>
 
 </body>
