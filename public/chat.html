@@ -113,6 +113,20 @@ ws.onmessage = (msg)=>{
     document.getElementById('infoPareja').innerHTML = "<p>Te desconectaste de tu pareja. Buscando otra...</p>";
   }
 };
+
+function reportar(){
+  const motivo = prompt("¿Por qué querés reportar a este usuario?");
+  
+  if(!motivo) return;
+
+  ws.send(JSON.stringify({
+    type: "report",
+    data: { motivo }
+  }));
+
+  alert("Reporte enviado. Gracias por ayudar a mantener la comunidad segura.");
+}
+
 </script>
 
 </body>
