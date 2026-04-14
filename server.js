@@ -16,25 +16,47 @@ wss.on('connection', ws => {
 
   ws.on('message', msg => {
     const data = JSON.parse(msg);
-    if(data.type === "report" && usuarioActual){
-  console.log("🚨 REPORTE RECIBIDO");
-  console.log("Usuario:", usuarioActual.nombre);
-  console.log("Motivo:", data.data.motivo);
-
-  // opcional: avisar al usuario reportado
+   if(data.type === "report" && usuarioActual){
   if(usuarioActual.pareja){
-    usuarioActual.pareja.ws.send(JSON.stringify({
-      type: "message",
-      data: {
-        texto: "El otro usuario te ha reportado.",
-        usuario: "Sistema"
+
+    const reportado = usuarioActual.pareja;
+
+    // sumar reporte
+    reportado.reportes = (reportado.reportes || 0) + 1;
+
+    console.log("🚨 REPORTE a:", reportado.nombre);
+    console.log("Total reportes:", reportado.reportes);
+
+    // avisar al reportado
+    reportado.ws.send(JSON.stringify({
+      type:"message",
+      data:{
+        texto:"Has sido reportado por comportamiento inapropiado.",
+        usuario:"Sistema"
       }
     }));
+
+    // 🚫 SI LLEGA A 3 → EXPULSAR
+    if(reportado.reportes >= 3){
+
+      reportado.ws.send(JSON.stringify({
+        type:"message",
+        data:{
+          texto:"Has sido expulsado por múltiples reportes.",
+          usuario:"Sistema"
+        }
+      }));
+
+      // cerrar conexión
+      reportado.ws.close();
+
+      console.log("❌ Usuario expulsado:", reportado.nombre);
+    }
   }
 }
     
-    if(data.type==="join"){
-      usuarioActual = {...data.data, ws: ws};
+  if(data.type==="join"){
+  usuarioActual = {...data.data, ws: ws, reportes: 0};
       usuarios.push(usuarioActual);
       console.log("Usuarios conectados:", usuarios.length);
       emparejarUsuarios();
