@@ -16,6 +16,22 @@ wss.on('connection', ws => {
 
   ws.on('message', msg => {
     const data = JSON.parse(msg);
+    if(data.type === "report" && usuarioActual){
+  console.log("🚨 REPORTE RECIBIDO");
+  console.log("Usuario:", usuarioActual.nombre);
+  console.log("Motivo:", data.data.motivo);
+
+  // opcional: avisar al usuario reportado
+  if(usuarioActual.pareja){
+    usuarioActual.pareja.ws.send(JSON.stringify({
+      type: "message",
+      data: {
+        texto: "El otro usuario te ha reportado.",
+        usuario: "Sistema"
+      }
+    }));
+  }
+}
     
     if(data.type==="join"){
       usuarioActual = {...data.data, ws: ws};
