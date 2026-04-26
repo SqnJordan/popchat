@@ -9,8 +9,34 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="intro" style="text-align:center; max-width:700px; margin:auto;">
 
-<div class="form-container">
+  <h1>Bienvenido a PopChat</h1>
+
+  <p>
+    PopChat es una plataforma online que te permite conocer personas de todo el mundo mediante chat o videollamadas.
+  </p>
+
+  <p>
+    Puedes conectar con personas al azar o con gustos similares y cambiar de usuario en cualquier momento.
+  </p>
+
+  <p>
+    También puedes reportar comportamientos inapropiados para mantener la comunidad segura.
+  </p>
+
+  <label>
+    <input type="checkbox" id="aceptaPrivacidad">
+    Acepto la <a href="privacy.html" target="_blank">Política de Privacidad</a>
+  </label>
+
+  <br><br>
+
+  <button onclick="comenzar()">Comenzar</button>
+
+</div>
+     
+<div class="form-container" id="formulario" style="display:none;">
   <h1>Bienvenido a PopChat</h1>
      <p style="text-align:center; font-size:13px; color:gray;">
 Al utilizar PopChat aceptas nuestras políticas de privacidad.
