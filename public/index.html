@@ -170,6 +170,19 @@ Podés elegir entre chat por texto o videollamada, creando una experiencia diná
 </div>
 
 <script>
+
+function comenzar(){
+  const check = document.getElementById("aceptaPrivacidad");
+
+  if(!check.checked){
+    alert("Debes aceptar la política de privacidad");
+    return;
+  }
+
+  document.getElementById("intro").style.display = "none";
+  document.getElementById("formulario").style.display = "block";
+}
+     
 function proseguir(){
   const nombre = document.getElementById("nombre").value;
   const edad = document.getElementById("edad").value;
